@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AFP Fire Pan Drawing Generator</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "IBM Plex Mono", monospace;
+      background: #0f1419;
+      color: #e8edf1;
+      overflow: hidden;
+    }
+    #root { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useRef, useEffect, useLayoutEffect } = React;
+
+    function parseDim(str) {
+      if (str === null || str === undefined) return NaN;
+      const s = String(str).trim().replace(/[″"]/g, "");
+      if (!s) return NaN;
+      const mixed = s.match(/^(\d+)[\s-]+(\d+)\s*\/\s*(\d+)$/);
+      if (mixed) return parseInt(mixed[1]) + parseInt(mixed[2]) / parseInt(mixed[3]);
+      const frac = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+      if (frac) return parseInt(frac[1]) / parseInt(frac[2]);
+      const num = parseFloat(s);
+      return isNaN(num) ? NaN : num;
+    }
+
+    function fmtIn(v) {
+      if (isNaN(v)) return "—";
+      const sign = v < 0 ? "-" : "";
+      v = Math.abs(v);
+      let whole = Math.floor(v);
+      let sixteenths = Math.round((v - whole) * 16);
+      if (sixteenths === 16) { whole += 1; sixteenths = 0; }
+      if (sixteenths === 0) return `${sign}${whole}"`;
+      let n = sixteenths, d = 16;
+      while (n % 2 === 0) { n /= 2; d /= 2; }
+      return whole === 0 ? `${sign}${n}/${d}"` : `${sign}${whole} ${n}/${d}"`;
+    }
+
+    function App() {
+      const [len, setLen] = useState("48");
+      const [wid, setWid] = useState("12");
+      const [dep, setDep] = useState("2");
+      const [product, setProduct] = useState("flatpan");
+      const [job, setJob] = useState("Fire Feature");
+      const [drawnBy, setDrawnBy] = useState("");
+      const [dwgNo, setDwgNo] = useState("");
+      const [estNo, setEstNo] = useState("");
+
+      const field = {
+        display: "block", width: "100%", boxSizing: "border-box",
+        background: "#131726", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 11,
+        color: "#e8edf1", padding: "10px 13px", fontSize: 14,
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.25)",
+        fontFamily: "'IBM Plex Mono', ui-monospace, monospace", outline: "none",
+      };
+      const lab = { fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#93a0ac", marginBottom: 6, display: "block", fontWeight: 600 };
+      const row = { marginBottom: 14 };
+
+      const valid = !isNaN(parseDim(len)) && !isNaN(parseDim(wid)) && !isNaN(parseDim(dep)) && parseDim(dep) > 0;
+
+      return (
+        <div style={{ display: "flex", height: "100vh", background: "#0f1419" }}>
+          <div style={{ 
+            width: 360, 
+            padding: 20, 
+            overflowY: "auto", 
+            background: "#181c2e", 
+            borderRight: "1px solid #2a3142"
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 20, color: "#dde93f" }}>
+              SHOP DRAWING GENERATOR
+            </div>
+
+            <div style={row}>
+              <span style={lab}>Pan type</span>
+              <select style={field} value={product} onChange={(e) => setProduct(e.target.value)}>
+                <option value="flatpan">Flat Pan</option>
+                <option value="dropin">Drop-In Pan</option>
+                <option value="roundflat">Round Flat Pan</option>
+                <option value="rounddropin">Round Drop-In Pan</option>
+              </select>
+            </div>
+
+            <div style={row}>
+              <span style={lab}>Pan length (inches)</span>
+              <input style={field} value={len} onChange={(e) => setLen(e.target.value)} />
+            </div>
+
+            {product !== "roundflat" && product !== "rounddropin" && (
+              <div style={row}>
+                <span style={lab}>Pan width (inches)</span>
+                <input style={field} value={wid} onChange={(e) => setWid(e.target.value)} />
+              </div>
+            )}
+
+            <div style={row}>
+              <span style={lab}>Pan depth (inches)</span>
+              <input style={field} value={dep} onChange={(e) => setDep(e.target.value)} />
+            </div>
+
+            <div style={row}>
+              <span style={lab}>Job name</span>
+              <input style={field} value={job} onChange={(e) => setJob(e.target.value)} />
+            </div>
+
+            <div style={row}>
+              <span style={lab}>Drawn by</span>
+              <input style={field} value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="Your name" />
+            </div>
+
+            <div style={row}>
+              <span style={lab}>Drawing number</span>
+              <input style={field} value={dwgNo} onChange={(e) => setDwgNo(e.target.value)} />
+            </div>
+
+            <div style={row}>
+              <span style={lab}>Estimate number</span>
+              <input style={field} value={estNo} onChange={(e) => setEstNo(e.target.value)} />
+            </div>
+
+            <button style={{
+              width: "100%", padding: "12px 0", borderRadius: 9, border: "none", cursor: valid ? "pointer" : "not-allowed",
+              background: valid ? "linear-gradient(180deg, #dde93f, #b6c318)" : "#262b45",
+              color: valid ? "#181c06" : "#6b7580",
+              boxShadow: valid ? "0 4px 14px rgba(205,219,44,0.28)" : "none",
+              fontWeight: 700, fontSize: 14,
+            }} disabled={!valid}>
+              Generate Drawing
+            </button>
+          </div>
+
+          <div style={{ 
+            flex: 1, 
+            padding: 28, 
+            overflowY: "auto", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center"
+          }}>
+            {valid ? (
+              <div style={{ textAlign: "center", color: "#e8edf1" }}>
+                <h2 style={{ fontSize: 24, marginBottom: 16, color: "#dde93f" }}>✓ Ready to Generate</h2>
+                <div style={{ fontSize: 14, color: "#93a0ac", lineHeight: 1.8 }}>
+                  <p><strong>Pan:</strong> {len}" × {wid}" × {dep}"</p>
+                  <p><strong>Type:</strong> {product}</p>
+                  <p><strong>Job:</strong> {job}</p>
+                  {drawnBy && <p><strong>Drawn by:</strong> {drawnBy}</p>}
+                  {dwgNo && <p><strong>Drawing #:</strong> {dwgNo}</p>}
+                  {estNo && <p><strong>Estimate #:</strong> {estNo}</p>}
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", color: "#6b7580" }}>
+                <h2 style={{ fontSize: 18, marginBottom: 10 }}>Enter valid dimensions</h2>
+                <p style={{ fontSize: 12 }}>Accepts decimals (48.5) or fractions (48 1/2)</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
